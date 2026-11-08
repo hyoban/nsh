@@ -768,6 +768,43 @@ pub(crate) fn encode(batch: MountBatch) -> Encoded {
                             _ => e.int(-1),
                         }
                     }
+                    // `MediaSessions.java`: the sub-opcode, then the
+                    // session's fields.
+                    Command::MediaSession(command) => {
+                        use nsh_core::media_session::{MediaPlaybackState as P, MediaSessionCommand as M};
+                        e.int(48);
+                        match command {
+                            M::Update(state) => {
+                                e.int(0);
+                                match state.metadata {
+                                    Some(m) => {
+                                        e.bool(true);
+                                        e.string(m.title);
+                                        e.string(m.artist);
+                                        e.string(m.album);
+                                        e.string(m.artwork);
+                                    }
+                                    None => e.bool(false),
+                                }
+                                e.int(match state.playback {
+                                    P::None => 0,
+                                    P::Paused => 1,
+                                    P::Playing => 2,
+                                });
+                                match state.position {
+                                    Some(p) => {
+                                        e.bool(true);
+                                        e.float(p.duration.as_secs_f32() * 1000.0);
+                                        e.float(p.position.as_secs_f32() * 1000.0);
+                                        e.float(p.rate);
+                                    }
+                                    None => e.bool(false),
+                                }
+                            }
+                            M::Listen => e.int(1),
+                            _ => e.int(-1),
+                        }
+                    }
                     // `SystemUi.dialog` draws alerts and action sheets in
                     // them: each of `DIALOG_TOKENS`, light then dark (0: the
                     // system's). An app without a theme of its own (its

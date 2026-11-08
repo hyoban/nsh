@@ -24,6 +24,7 @@ mod fps;
 mod fs;
 mod host;
 mod image;
+mod media_session;
 mod net;
 mod notifications;
 mod os;
@@ -65,6 +66,7 @@ pub fn registries() -> &'static [Registry] {
             .class::<audio::Sound>()
             .class::<audio::AudioPlayer>()
             .module::<notifications::Notifications>()
+            .module::<media_session::MediaSession>()
             .module::<url_scheme::UrlScheme>()
             .module::<webview::WebView>()
             .module::<storage::Storage>()

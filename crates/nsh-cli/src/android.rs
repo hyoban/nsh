@@ -178,6 +178,10 @@ pub(crate) struct Apk<'a> {
     pub(crate) dev: bool,
     /// The app may show notifications: `POST_NOTIFICATIONS` is declared.
     pub(crate) notifications: bool,
+    /// The app shows what it plays in the system's media session and plays
+    /// in the background: `MediaPlaybackService`, a `mediaPlayback`
+    /// foreground service, is declared with its permissions.
+    pub(crate) media_session: bool,
     /// URL schemes that open the app (nsh.json `schemes`): one
     /// `VIEW` intent filter.
     pub(crate) schemes: &'a [String],
@@ -343,6 +347,14 @@ fn manifest_xml(apk: &Apk<'_>) -> String {
     } else {
         ""
     };
+    let (media_permissions, media_service) = if apk.media_session {
+        (
+            "\n    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />\n    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK\" />",
+            "\n        <!-- Keeps the app playing in the background while its\n            `MediaSession` plays. -->\n        <service android:name=\"com.longbridge.nsh.MediaPlaybackService\"\n            android:exported=\"false\"\n            android:foregroundServiceType=\"mediaPlayback\" />",
+        )
+    } else {
+        ("", "")
+    };
     // A link opens the running app (`onNewIntent`), not another activity in
     // the caller's task.
     let launch_mode = if apk.schemes.is_empty() {
@@ -365,7 +377,7 @@ fn manifest_xml(apk: &Apk<'_>) -> String {
     format!(
         r#"<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{package}">
-    <uses-permission android:name="android.permission.INTERNET" />{post_notifications}
+    <uses-permission android:name="android.permission.INTERNET" />{post_notifications}{media_permissions}
     <application android:label="{label}"{icon}{cleartext}
         android:extractNativeLibs="false"
         android:enableOnBackInvokedCallback="true"
@@ -377,7 +389,7 @@ fn manifest_xml(apk: &Apk<'_>) -> String {
         <provider android:name="com.longbridge.nsh.FilesProvider"
             android:authorities="{package}.files"
             android:exported="false"
-            android:grantUriPermissions="true" />
+            android:grantUriPermissions="true" />{media_service}
         <activity android:name="{activity}" android:exported="true"{launch_mode}
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|locale|layoutDirection">
@@ -783,6 +795,7 @@ mod tests {
             activity: "com.longbridge.nsh.AppActivity",
             dev: false,
             notifications,
+            media_session: false,
             schemes: &[],
             rust,
             dark: false,
@@ -792,6 +805,21 @@ mod tests {
             assets: Vec::new(),
             signing: super::Signing::Debug,
         }
+    }
+
+    #[test]
+    fn only_an_app_granted_the_media_session_declares_its_service() {
+        let service = r#"<service android:name="com.longbridge.nsh.MediaPlaybackService""#;
+        let permission = "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK";
+        let plain = super::manifest_xml(&apk(false, false));
+        assert!(!plain.contains(service) && !plain.contains(permission));
+        let playing = super::manifest_xml(&super::Apk {
+            media_session: true,
+            ..apk(false, false)
+        });
+        assert!(playing.contains(service), "{playing}");
+        assert!(playing.contains(r#"android:foregroundServiceType="mediaPlayback""#));
+        assert!(playing.contains(permission));
     }
 
     #[test]

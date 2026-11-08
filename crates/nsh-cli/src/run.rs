@@ -836,6 +836,7 @@ pub(crate) fn install_android_host(
                 activity: "com.longbridge.nsh.DevActivity",
                 dev: true,
                 notifications: true,
+                media_session: true,
                 schemes: &[],
                 rust: false,
                 dark: false,

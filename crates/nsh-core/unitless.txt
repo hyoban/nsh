@@ -153,6 +153,7 @@ input::zoom_factor(notches)                                      # a count of wh
 js::host::Clamped::clamped(max)                                  # a generic number (a JS value, a recorded slot)
 js::host::Clamped::clamped(min)                                  # a generic number (a JS value, a recorded slot)
 js::host::HostInput::as_number ->                                # a generic number (a JS value, a recorded slot)
+media_session::MediaPosition.rate                                # a playback rate multiplier
 mount::ImageOptions.fade_ms                                      # time
 mount::ScrollBehavior.deceleration                               # a rate or a physical constant of an animation
 mount::ScrollBehavior.max_zoom                                   # a zoom scale factor

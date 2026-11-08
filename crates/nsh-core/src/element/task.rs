@@ -115,6 +115,8 @@ pub(crate) enum Action {
     Speech(SpeechAction),
     /// A notification's request ([`crate::notifications`]).
     Notification(NotificationAction),
+    /// The media session's request ([`crate::media_session`]).
+    MediaSession(MediaSessionAction),
     /// The next link the system hands the app ([`crate::url_scheme`])
     /// resolves the slot, those that came before first.
     NextUrlSchemeOpen(AnswerSlot<String>),
@@ -220,6 +222,17 @@ pub(crate) enum NotificationAction {
     SetBadge(u32),
     /// The id of the next notification pressed resolves the slot.
     NextPress(AnswerSlot<String>),
+}
+
+/// What the app asks of the media session ([`Action::MediaSession`]).
+pub(crate) enum MediaSessionAction {
+    /// The session is now this: the core sends it when it changed.
+    Update(crate::media_session::MediaSessionState),
+    /// The next action the user asks resolves the slot.
+    NextAction(AnswerSlot<crate::media_session::MediaActionDetails>),
+    /// Whether the system shows a media session here; the answer resolves
+    /// the slot.
+    Available(AnswerSlot<bool>),
 }
 
 /// A request on local paths waiting for the platform's answer

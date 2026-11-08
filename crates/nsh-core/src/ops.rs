@@ -256,6 +256,7 @@ events! {
     UrlScheme = "onUrlScheme": "The system handed the app a URL that opens it (root only; payload: `url`, [`crate::url_scheme::URL`]); the core keeps those of the schemes the app claims ([`crate::url_scheme`]).",
     Audio = "onAudio": "A sound or a player reported (root only; payload: [`EventPayload::Audio`]).",
     Window = "onWindow" as "": "A window of the app's own reported its state, a close press or that it closed (on its root node; desktops; payload: [`EventPayload::Window`]).",
+    MediaSession = "onMediaSession": "The user asked an action of the media session: its notification's buttons, the lock screen's, a headset's (root only; payload: the fields of [`crate::media_session::MediaSessionEvent`]).",
 
 }
 
@@ -2036,6 +2037,12 @@ pub enum Command {
     /// Show a notification, ask for the permission, set the app's badge
     /// (on the root; `Notifications` of `nsh`, [`crate::notifications`]).
     Notification(crate::notifications::NotificationCommand),
+    /// Show what plays in the system's media session and report the user's
+    /// actions on it (on the root; `MediaSession` of `nsh`,
+    /// [`crate::media_session`]) as [`EventKind::MediaSession`]. Sent only
+    /// on platforms whose [`crate::platform::Environment::media_session`]
+    /// is set.
+    MediaSession(crate::media_session::MediaSessionCommand),
     /// A desktop command (on the root; `nsh/desktop`): the window, its
     /// title bar, menus. Mobile platforms ignore it.
     Desktop(Box<crate::desktop::DesktopCommand>),

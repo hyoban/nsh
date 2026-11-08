@@ -392,6 +392,10 @@ pub struct Capabilities {
     pub notifications: bool,
     /// The app may play sound (`Sound` and `AudioPlayer` of `nsh`).
     pub audio: bool,
+    /// The app may show what it plays in the system's media session and
+    /// keep playing in the background (`MediaSession` of `nsh`; Android's
+    /// `mediaPlayback` foreground service, which `nsh package` declares).
+    pub media_session: bool,
     /// The functions of the embedding app `nsh/host` may call: names, or
     /// prefixes ending in `*` (`"*"`: all); empty: none, also for apps
     /// without a declaration ([`Capabilities::all`]).
@@ -577,6 +581,7 @@ impl Capabilities {
             speech: true,
             notifications: true,
             audio: true,
+            media_session: true,
             open_url: Some(OpenUrlGrant::default()),
             // Every kind and level, but no overlays or capture protection.
             windows: Some(WindowsGrant::default()),
@@ -631,7 +636,7 @@ impl Capabilities {
     /// `dropped`: lenient, recording what unknown keys dropped; `None`:
     /// strict.
     fn parse(value: &Value, mut dropped: Option<&mut Vec<String>>) -> Result<Self, String> {
-        const KNOWN: [&str; 13] = [
+        const KNOWN: [&str; 14] = [
             "windows",
             "network",
             "webview",
@@ -641,6 +646,7 @@ impl Capabilities {
             "speech",
             "notifications",
             "audio",
+            "mediaSession",
             "openUrl",
             "process",
             "fs",
@@ -779,6 +785,11 @@ impl Capabilities {
             caps.audio = audio
                 .as_bool()
                 .ok_or("capabilities.audio must be a boolean")?;
+        }
+        if let Some(media_session) = obj.get("mediaSession") {
+            caps.media_session = media_session
+                .as_bool()
+                .ok_or("capabilities.mediaSession must be a boolean")?;
         }
         if let Some(open_url) = obj.get("openUrl") {
             match open_url {
@@ -1027,6 +1038,9 @@ impl Capabilities {
         }
         if self.audio {
             obj.insert("audio".into(), true.into());
+        }
+        if self.media_session {
+            obj.insert("mediaSession".into(), true.into());
         }
         if !self.host.is_empty() {
             obj.insert("host".into(), self.host.clone().into());
@@ -1760,6 +1774,12 @@ impl Access {
     /// Whether the app may play sound (`Sound` and `AudioPlayer` of `nsh`).
     pub fn allows_audio(&self) -> bool {
         self.each(|c| c.audio)
+    }
+
+    /// Whether the app may show what it plays in the system's media session
+    /// and keep playing in the background (`MediaSession` of `nsh`).
+    pub fn allows_media_session(&self) -> bool {
+        self.each(|c| c.media_session)
     }
 
     /// Whether `nsh/host` may call the embedding app's function `name`.

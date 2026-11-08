@@ -802,6 +802,35 @@ pub fn next_notification_press() -> Answer<String> {
     answer
 }
 
+/// Shows `state` as the system's media session (TS: `MediaSession`'s
+/// setters): what plays, whether it plays, where. The core sends it to the
+/// platform when it changed.
+pub fn update_media_session(state: crate::media_session::MediaSessionState) {
+    act(Action::MediaSession(super::MediaSessionAction::Update(
+        state,
+    )));
+}
+
+/// The next action the user asks of the media session (TS:
+/// `MediaSession.on("action", ...)`). To await in a task.
+pub fn next_media_action() -> Answer<crate::media_session::MediaActionDetails> {
+    let (answer, slot) = Answer::new();
+    act(Action::MediaSession(super::MediaSessionAction::NextAction(
+        slot,
+    )));
+    answer
+}
+
+/// Whether the system shows a media session here (TS:
+/// `MediaSession.available`). To await in a task.
+pub fn media_session_available() -> Answer<bool> {
+    let (answer, slot) = Answer::new();
+    act(Action::MediaSession(super::MediaSessionAction::Available(
+        slot,
+    )));
+    answer
+}
+
 /// The next link that opens the app (TS: `UrlScheme.on("open", ...)`): a
 /// URL of a scheme the app claims (`nsh.json` `schemes`), those
 /// that came before anything listened first, the one that launched the app

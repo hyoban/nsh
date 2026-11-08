@@ -272,6 +272,11 @@ pub struct Environment {
     /// [`crate::notifications`]); without it, the permission is
     /// `unavailable` and nothing shows.
     pub notifications: bool,
+    /// The platform shows the system's media session
+    /// ([`crate::Command::MediaSession`], [`crate::media_session`]) and keeps
+    /// the app playing in the background while it plays; without it, the
+    /// session shows nowhere and no action comes.
+    pub media_session: bool,
     /// The platform plays sound ([`crate::Command::Audio`],
     /// [`crate::audio`]); without it, sounds and players fail at once
     /// (`unavailable`) unless the core has a [`crate::audio::AudioBackend`].
@@ -332,6 +337,7 @@ impl Default for Environment {
             file_requests: false,
             speech: false,
             notifications: false,
+            media_session: false,
             audio: false,
             cell: None,
             web_input: false,

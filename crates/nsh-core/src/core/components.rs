@@ -501,6 +501,19 @@ struct Notifications {
     next_press: Option<AnswerSlot<String>>,
 }
 
+/// The media session ([`crate::media_session`]).
+#[derive(Default)]
+struct MediaSessions {
+    /// What the platform was last sent.
+    sent: Option<crate::media_session::MediaSessionState>,
+    /// The platform was told to report actions.
+    listening: bool,
+    /// Actions no listener took yet (a few: the oldest go).
+    actions: std::collections::VecDeque<crate::media_session::MediaActionDetails>,
+    /// The listener waiting for an action.
+    next_action: Option<AnswerSlot<crate::media_session::MediaActionDetails>>,
+}
+
 /// The links that open the app ([`crate::url_scheme`]).
 #[derive(Default)]
 struct UrlScheme {
@@ -600,6 +613,7 @@ pub(super) struct Components {
     audio: FxHashMap<u32, crate::audio::AudioSink>,
     /// What notifications wait for ([`crate::notifications`]).
     notifications: Notifications,
+    media_sessions: MediaSessions,
     /// The links that open the app ([`crate::url_scheme`]).
     url_schemes: UrlScheme,
     /// Calls of the embedding app's functions (`nsh/host`), by request id:
@@ -728,6 +742,7 @@ impl Default for Components {
             speech: None,
             audio: FxHashMap::default(),
             notifications: Notifications::default(),
+            media_sessions: MediaSessions::default(),
             url_schemes: UrlScheme::default(),
             host_calls: FxHashMap::default(),
             next_host_call: 1,
@@ -5064,6 +5079,85 @@ impl<M: TextEngine> Core<M> {
         });
     }
 
+    /// Applies what the app asks of the media session: granted and where
+    /// the platform shows one, the session goes to the platform when it
+    /// changed, and the user's actions come back as
+    /// [`EventKind::MediaSession`].
+    fn media_session_action(&mut self, action: crate::element::MediaSessionAction) {
+        use crate::{element::MediaSessionAction, media_session::MediaSessionCommand};
+        let available =
+            self.access.allows_media_session() && self.components.environment.media_session;
+        let command = match action {
+            MediaSessionAction::Available(answer) => {
+                answer.borrow_mut().deliver(available);
+                return;
+            }
+            MediaSessionAction::Update(state) => {
+                let sessions = &mut self.components.media_sessions;
+                if !available || sessions.sent.as_ref() == Some(&state) {
+                    return;
+                }
+                sessions.sent = Some(state.clone());
+                MediaSessionCommand::Update(Box::new(state))
+            }
+            MediaSessionAction::NextAction(answer) => {
+                let sessions = &mut self.components.media_sessions;
+                if let Some(action) = sessions.actions.pop_front() {
+                    answer.borrow_mut().deliver(action);
+                    return;
+                }
+                sessions.next_action = Some(answer);
+                if !available || sessions.listening {
+                    return;
+                }
+                sessions.listening = true;
+                MediaSessionCommand::Listen
+            }
+        };
+        let _ = self.apply_op(Op::Command {
+            id: crate::ROOT_ID,
+            command: Command::MediaSession(command),
+        });
+    }
+
+    /// Hands the user's action on the media session to the listener, or
+    /// keeps it for the next.
+    fn media_session_event(&mut self, payload: &EventPayload) {
+        use crate::media_session::{MediaAction, MediaActionDetails, MediaSessionEvent as Field};
+        /// Actions kept for a listener to come: a few, the latest.
+        const KEPT: usize = 8;
+        let EventPayload::Map(entries) = payload else {
+            return;
+        };
+        let mut action = None;
+        let mut seek_time = None;
+        for (key, value) in entries {
+            match (*key, value) {
+                (Field::ACTION, crate::PayloadValue::Str(name)) => {
+                    action = MediaAction::from_name(name)
+                }
+                (Field::SEEK_TIME, crate::PayloadValue::Number(ms)) if ms.is_finite() => {
+                    seek_time = Some(std::time::Duration::from_secs_f64(ms.max(0.0) / 1000.0));
+                }
+                _ => {}
+            }
+        }
+        let Some(action) = action else {
+            return;
+        };
+        let details = MediaActionDetails { action, seek_time };
+        let sessions = &mut self.components.media_sessions;
+        match sessions.next_action.take() {
+            Some(answer) => answer.borrow_mut().deliver(details),
+            None => {
+                if sessions.actions.len() == KEPT {
+                    sessions.actions.pop_front();
+                }
+                sessions.actions.push_back(details);
+            }
+        }
+    }
+
     /// Hands `url`, a link the system gave the app, to the listener, or
     /// keeps it for the next; drops it when the app does not claim it.
     fn url_scheme(&mut self, url: String) {
@@ -5524,6 +5618,7 @@ impl<M: TextEngine> Core<M> {
             Action::Speech(action) => self.speech_action(action),
             Action::Audio(action) => self.audio_action(action),
             Action::Notification(action) => self.notification_action(action),
+            Action::MediaSession(action) => self.media_session_action(action),
             Action::NextUrlSchemeOpen(answer) => {
                 let links = &mut self.components.url_schemes;
                 match links.pending.pop_front() {
@@ -5932,6 +6027,10 @@ impl<M: TextEngine> Core<M> {
             }
             EventKind::Notification if id == crate::ROOT_ID => {
                 self.notification_event(payload);
+                true
+            }
+            EventKind::MediaSession if id == crate::ROOT_ID => {
+                self.media_session_event(payload);
                 true
             }
             EventKind::UrlScheme if id == crate::ROOT_ID => {

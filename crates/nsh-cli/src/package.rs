@@ -199,6 +199,15 @@ impl AppConfig {
         }
     }
 
+    /// Whether the app plays in the background with the system's media
+    /// session: only when it grants `mediaSession` (a foreground service is
+    /// declared for no app that does not ask for one).
+    pub(crate) fn media_session(&self) -> bool {
+        self.capabilities
+            .as_ref()
+            .is_some_and(|c| c.get("mediaSession") == Some(&serde_json::Value::Bool(true)))
+    }
+
     /// The URL schemes the app claims (`"schemes": [...]`), checked, in
     /// lower case; those it cannot claim are left out ([`read_config`]
     /// warns of them).
@@ -864,6 +873,7 @@ fn package_android(
             activity: "com.longbridge.nsh.AppActivity",
             dev: false,
             notifications: config.notifications(),
+            media_session: config.media_session(),
             schemes: &config.schemes,
             rust: built.rust_root,
             dark: config.appearance.as_deref() == Some("dark"),

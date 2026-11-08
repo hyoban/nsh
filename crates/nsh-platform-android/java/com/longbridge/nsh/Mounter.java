@@ -712,6 +712,7 @@ final class Mounter {
      */
     void destroyComponents() {
         Notifications.forget(this);
+        MediaSessions.forget(this);
         if (audio != null) {
             audio.release();
             audio = null;
@@ -2266,6 +2267,10 @@ final class Mounter {
             }
             case 47: {
                 audio().command(b, objects);
+                break;
+            }
+            case 48: {
+                MediaSessions.command(this, b, objects);
                 break;
             }
             case 26: {

@@ -1162,6 +1162,7 @@ extern "system" fn Java_com_longbridge_nsh_Native_environment(
     environment.os = nsh_engine::Os::Android;
     environment.notifications = true;
     environment.audio = true;
+    environment.media_session = true;
     environment.os_version = (v[11] as u16, 0);
     environment.idiom = match v[12] as u8 {
         1 => Idiom::Pad,
@@ -1700,6 +1701,9 @@ extern "system" fn Java_com_longbridge_nsh_Native_eventMap(
                 "positionMs" => "positionMs",
                 "truncated" => "truncated",
                 "buffering" => "buffering",
+                // `MediaSessions.java`'s actions.
+                "action" => nsh_core::media_session::MediaSessionEvent::ACTION,
+                "seekTime" => nsh_core::media_session::MediaSessionEvent::SEEK_TIME,
                 _ => continue,
             };
             if let Some(v) = read(&mut env, i) {

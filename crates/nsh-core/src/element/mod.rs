@@ -194,7 +194,7 @@ pub(crate) use self::{
     component::{AnyInstance, caught},
     task::{
         Action, AfterAnswer, AnswerSlot, AudioAction, ClipboardRead, Executor, FileAnswer,
-        NotificationAction, SpeechAction,
+        MediaSessionAction, NotificationAction, SpeechAction,
     },
 };
 /// The geometry Rust components style with (`crate::geometry`).
